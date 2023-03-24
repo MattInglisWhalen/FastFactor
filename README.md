@@ -2,6 +2,25 @@
 A fast implementation of the Multiple Polynomial Quadratic Sieve. I saw 
 [this post](https://codegolf.stackexchange.com/questions/8629/fastest-semiprime-factorization) and wanted to preserve it.
 
+## Sample Output
+
+<code>$ python mpqs.py --verbose 523022617466601111760007224100074291200000001
+smoothness bound: 14998
+sieve size: 74990
+log threshold: 18.732551031632
+skipping primes less than: 37
+0 percent complete
+ ...
+100 percent complete
+323 polynomials sieved (48443540 values)
+found 843 smooths (103 from partials) in 13.245 seconds
+solving for non-trivial congruencies...
+factors found:
+14029308060317546154181 x 37280713718589679646221
+time elapsed: 13.380 seconds
+</code>
+
+
 ### Basic Concepts
 
 In general, a quadratic sieve is based on the following observation: any odd composite $n$ may be represented as:
@@ -22,8 +41,8 @@ $d^2≡x^2\mod n$
 So in general, if we can find two perfect squares which are equivalent mod $n$, then it's fairly likely that we can directly produce a factor of $n$
 a la $\gcd(x±d,n)$. Seems pretty simple, right?
 
-Except it's not. If we intended to conduct an exhaustive search over all possible xxx, we would need to search the entire range from 
-$\sqrt{n}$ $\sqrt{2n}$, which is marginally smaller than full trial division, but also requires an expensive `is_square` operation each iteration 
+Except it's not. If we intended to conduct an exhaustive search over all possible $x$, we'd need to search the entire range from 
+$\sqrt{n}$ to $\sqrt{2n}$, which is marginally smaller than full trial division, but also requires an expensive `is_square` operation each iteration 
 to confirm the value of $d$. Unless it is known beforehand that $n$ has factors very near $\sqrt{n}$, trial division is likely to be faster.
 
 Perhaps we can weaken this relation even more. Suppose we chose an $x$, such that for
@@ -51,7 +70,7 @@ divisible by $p$ - then you have found an infinite number of such $x$. In this w
 prime factors of $y$, hopefully finding some for which all prime factors are small. 
 Such numbers known as $k−smooth$, where $k$ is the largest prime factor used.
 
-There's a few problems with this approach, though. Not all values of $x$ are adequate, in fact, there's only very few of them, 
+There's a few problems with this approach. Not all values of $x$ are adequate, in fact, there's only very few of them, 
 centered around $\sqrt{n}$. Smaller values will become largely negative (due to the $-n$ term), and larger values will become too large, 
 such that it is unlikely that their prime factorization consists only of small primes. There will be a number of such $x$, but unless the 
 composite you're factoring is very small, it's highly unlikely that you'll find enough smooths to result in a factorization. And so, for 
@@ -77,7 +96,7 @@ $B^2−n\=AC$
 
 then the entire polynomial can be rewritten as
 
-$y(x)\=(Ax+B)^2−n = (Ax)^2+2ABx+B2−n = A(Ax2+2Bx+C)$
+$y(x)\=(Ax+B)^2−n = (Ax)^2+2ABx+B^2−n = A(Ax^2+2Bx+C)$
 
 Furthermore, if $A$ is chosen to be a perfect square, the leading $A$ term can be neglected while sieving, resulting in much smaller 
 values, and a much flatter curve. For such a solution to exist, $n$ must be a [quadratic residue](http://en.wikipedia.org/wiki/Quadratic_residue) 
@@ -124,25 +143,27 @@ it no longer needs to be considered.
 The last thing we need to do is to use these values of $y$ construct an adequate $x$ and $d$. Suppose we only consider the non-square factors 
 of $y$, that is, the prime factors of an odd power. Then, each $y$ can be expressed in the following manner:
 
-$y0=p00⋅p11⋅p12⋯p0n$
+$y_0=p^0_0⋅p^1_1⋅p^1_2⋯p^0_n$
 
-$y1=p10⋅p01⋅p12⋯p1n$
+$y_1=p^1_0⋅p^0_1⋅p^1_2⋯p^1_n$
 
-$y2=p00⋅p01⋅p02⋯p1n$
+$y_2=p^0_0⋅p^0_1⋅p^0_2⋯p^1_n$
 
-$y3=p10⋅p11⋅p02⋯p0n$
+$y_3=p^1_0⋅p^1_1⋅p^0_2⋯p^0_n$
 
-etc., which can be expressed in the matrix form:
+$\vdots$
 
-|0 & 1 & 1 & \ldots & 0 |
+which can be expressed in the matrix form:
 
-|1 & 0 & 0 & \ldots & 1 |
+$|0 \ 1 \ 1 \ \ldots \ 0 |$
 
-|0 & 0 & 0 & \ldots & 1 |
+$|1 \ 0 \ 1 \ \ldots \ 1 |$
 
-|1 & 1 & 0 & \ldots & 0 |
+$|0 \ 0 \ 0 \ \ldots \ 1 |$
 
-| \vdots &  &  &  &  |  ```
+$|1 \ 1 \ 0 \ \ldots \ 0 |$
+
+$| \ \vdots \ \ \vdots \ \ \vdots \ \ldots \ \vdots |$
 
 The problem then becomes to find a vector $\vec{v}$ such that $\vec{v}M\=\vec{0} \mod 2 $, where $\vec{0}$ is the null vector. That is, to solve 
 for the left null space of $M$. This can be done in a number of ways, the simplest of which is to perform Gaussian Elimination on $M^T$, replacing the 
@@ -153,4 +174,3 @@ more complicated. If we were to take the product of all $y$, we will end up with
 digits, for which we need to find the square root. This calcuation is impractically expensive. Instead, we can keep track of the even 
 powers of primes during the sieving process, and then use `and` and `xor` operations on the vectors of non-square factors to reconstruct the square root.
 
-I seem to have reached the 30000 character limit. Ahh well, I suppose that's good enough. Saved a bunch of bytes by switching to MathJax.
